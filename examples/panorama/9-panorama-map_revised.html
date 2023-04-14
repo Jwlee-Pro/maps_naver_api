@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>파노라마 - 지도 연동 예시</title>
+    <script src="../../docs/js/jquery-1.9.1.js"></script>
+    <script type="text/javascript" src="../../docs/js/examples-base.js"></script>
+    <script type="text/javascript" src="../../docs/js/highlight.min.js"></script>
+    <script type="text/javascript" src="https://openapi.map.naver.com/openapi/v3/maps.js?ncpClientId=5yl1yk9tal&amp;submodules=panorama"></script>
+    <link rel="stylesheet" type="text/css" href="../../docs/css/examples-base.css" />
+</head>
+<body>
+
+<!-- @category Panorama -->
+
+<style type="text/css">
+    #wrap .buttons { position:absolute;top:0;left:0;z-index:1000;padding:5px; }
+    #wrap .buttons .control-btn { margin:0 5px 5px 0; }
+</style>
+
+<div id="wrap" class="section">
+    <h2>소방차 위치 및 전방카메라 예시</h2>
+    <div style="display:flex;"></div>
+        <div id="map" style="width:40%;height:500px; float:left;">
+            <div class="buttons">
+                <input id="street" type="button" value="거리뷰" class="control-btn control-on" />
+            </div>
+        </div>
+        <div id="pano" style="width:40%;height:500px; float:left;"></div>
+    </div>
+    <div id="panoInfo" style="width:400px">
+        <table>
+            <tr>
+                <td><b>Pano ID</b></td><td id="id_cell">&nbsp;</td>
+            </tr>
+            <tr>
+                <td><b>Pano loc</b></td><td id="position">&nbsp;</td>
+            </tr>
+            <tr>
+                <td><b>Title</b></td><td id="title_cell">&nbsp;</td>
+            </tr>
+            <tr>
+                <td><b>Address</b></td><td id="address_cell">&nbsp;</td>
+            </tr>
+            <tr>
+                <td><b>Photodate</b></td><td id="photodate_cell">&nbsp;</td>
+            </tr>
+            <tr>
+                <td>&nbsp;</td>&nbsp;</td>
+            </tr>
+            <tr>
+                <td><b>POV Pan</b></td><td id="pan_cell">&nbsp;</td>
+            </tr>
+            <tr>
+                <td><b>POV Tilt</b></td><td id="tilt_cell">&nbsp;</td>
+            </tr>
+            <tr>
+                <td><b>POV Fov</b></td><td id="fov_cell">&nbsp;</td>
+            </tr>
+            <tr>
+                <td>&nbsp;</td>&nbsp;</td>
+            </tr>
+            <tr>
+                <td><b>Zoom</b></td><td id="zoom_cell">&nbsp;</td>
+            </tr>
+            <tr>
+                <td><b>Min Zoom</b></td><td id="min_zoom_cell">&nbsp;</td>
+            </tr>
+            <tr>
+                <td><b>Max Zoom</b></td><td id="max_zoom_cell">&nbsp;</td>
+            </tr>
+            <tr>
+                <td>&nbsp;</td>&nbsp;</td>
+            </tr>
+            
+            
+        </table>
+     </div>
+</div>
+
+<script id="code">
+var map = new naver.maps.Map('map', {
+    center: new naver.maps.LatLng(37.4788425, 126.9601407),
+    zoom: 19
+});
+
+var pano = null;
+naver.maps.onJSContentLoaded = function() {
+    // 아이디 혹은 지도 좌표로 파노라마를 표시할 수 있습니다.
+    pano = new naver.maps.Panorama("pano", {
+        position: new naver.maps.LatLng(37.4788425, 126.9601407),
+        pov: {
+            pan: 24,
+            tilt: 5,
+            fov: 100
+        }
+    });
+
+
+
+    // 파노라마 위치가 갱신되었을 때 발생하는 이벤트를 받아 지도의 중심 위치를 갱신합니다.
+    naver.maps.Event.addListener(pano, 'pano_changed', function() {
+        var latlng = pano.getPosition();
+
+        if (!latlng.equals(map.getCenter())) {
+            map.setCenter(latlng);
+        }
+    });
+
+    // 파노라마 정보 저장
+    naver.maps.Event.addListener(pano, "pano_status", function(status) {
+        $("#pano_status_cell").text(status + ", " + pano.getPanoId());
+
+        if (status != naver.maps.PanoramaStatus.OK) {
+            alert("error");
+        }
+    });
+
+    naver.maps.Event.addListener(pano, "pano_changed", function() {
+        $("#id_cell").text(pano.getPanoId());
+        $("#title_cell").text(pano.getLocation().title);
+        $("#address_cell").text(pano.getLocation().address);
+        $("#photodate_cell").text(pano.getLocation().photodate);
+        $("#position").text(pano.getPosition());
+        console.log('Position: ' + pano.getPosition());
+    });
+
+    naver.maps.Event.addListener(pano, "pov_changed", function() {
+        $("#pan_cell").text(pano.getPov().pan);
+        $("#tilt_cell").text(pano.getPov().tilt);
+        $("#fov_cell").text(pano.getPov().fov);
+
+        $("#zoom_cell").text(pano.getZoom());
+        $("#min_zoom_cell").text(pano.getMinZoom());
+        $("#max_zoom_cell").text(pano.getMaxZoom());
+
+        $("#scale_cell").text(pano.getScale());
+        $("#min_scale_cell").text(pano.getMinScale());
+        $("#max_scale_cell").text(pano.getMaxScale());
+
+        updateZoomState();
+    });
+};
+
+function updateZoomState() {
+    var disabledZoomIn = (pano.getScale() === pano.getMaxScale());
+    var disabledZoomOut = (pano.getScale() === pano.getMinScale());
+
+    var zoomIn = $("#zoomIn"),
+        zoomOut = $("#zoomOut");
+
+    if (disabledZoomIn) {
+        zoomIn.removeClass("control-on");
+    } else {
+        zoomIn.addClass("control-on");
+    }
+
+    if (disabledZoomOut) {
+        zoomOut.removeClass("control-on");
+    } else {
+        zoomOut.addClass("control-on");
+    }
+}
+
+
+
+// 거리뷰 레이어를 생성합니다.
+var streetLayer = new naver.maps.StreetLayer();
+naver.maps.Event.once(map, 'init', function() {
+    streetLayer.setMap(map);
+});
+
+// 거리뷰 버튼에 이벤트를 바인딩합니다.
+var btn = $('#street');
+btn.on("click", function(e) {
+    e.preventDefault();
+
+    // 거리뷰 레이어가 지도 위에 있으면 거리뷰 레이어를 지도에서 제거하고,
+    // 거리뷰 레이어가 지도 위에 없으면 거리뷰 레이어를 지도에 추가합니다.
+    if (streetLayer.getMap()) {
+        streetLayer.setMap(null);
+    } else {
+        streetLayer.setMap(map);
+    }
+});
+
+// 거리뷰 레이어가 변경되면 발생하는 이벤트를 지도로부터 받아 버튼의 상태를 변경합니다.
+naver.maps.Event.addListener(map, 'streetLayer_changed', function(streetLayer) {
+    if (streetLayer) {
+        btn.addClass('control-on');
+    } else {
+        btn.removeClass('control-on');
+    }
+});
+
+// // 소방차 마커 생성
+// var marker = new naver.maps.Marker({
+//     position: pano.setPosition(latlng),
+//     map: map
+// });
+
+// 지도를 클릭했을 때 발생하는 이벤트를 받아 파노라마 위치를 갱신합니다. 이때 거리뷰 레이어가 있을 때만 갱신하도록 합니다.
+naver.maps.Event.addListener(map, 'click', function(e) {
+    if (streetLayer.getMap()) {
+        var latlng = e.coord;
+
+        // 파노라마의 setPosition()은 해당 위치에서 가장 가까운 파노라마(검색 반경 300미터)를 자동으로 설정합니다.
+        pano.setPosition(latlng);
+    }
+});
+
+</script>
+</body>
+</html>
